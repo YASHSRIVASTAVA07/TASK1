@@ -1,48 +1,44 @@
-import autogen
+import google.generativeai as genai
 from stock_tool import fetch_stock_data, visualize_stock_data
 
-# Load API Configuration (Update this if needed)
-config_list = autogen.config_list_from_json("OAI_CONFIG_LIST")
+# ✅ Set up Gemini API
+genai.configure(api_key="AIzaSyBlJ1QBYb1I5qKrVpGVEPaSKPwQKJfzQD4")
 
-# ✅ Create the Data Fetching Agent
-data_agent = autogen.AssistantAgent(
-    name="DataAgent",
-    llm_config={"config_list": config_list, "temperature": 0},
-    system_message="You fetch financial stock data and generate visualizations."
-)
+# ✅ Function to generate stock trend analysis using Gemini
+def generate_stock_analysis(ticker):
+    """
+    Uses Google's Gemini AI to analyze stock trends and generate insights.
+    """
+    stock_data = fetch_stock_data(ticker)
 
-# ✅ Create the Report Generating Agent
-report_agent = autogen.AssistantAgent(
-    name="ReportAgent",
-    llm_config={"config_list": config_list, "temperature": 0},
-    system_message="You analyze financial trends and generate summaries."
-)
+    # Prepare the prompt
+    prompt = f"""
+    Analyze the following stock data for {ticker} and provide insights:
+    {stock_data.tail(10).to_string()}
+    """
 
-# ✅ Create the User Agent (This acts as the user)
-user_agent = autogen.UserProxyAgent(
-    name="UserAgent",
-    human_input_mode="NEVER",
-    max_consecutive_auto_reply=3,
-    is_termination_msg=lambda x: "exit" in x["content"].lower(),
-    system_message="You request stock market analysis.",
-)
+    # Send request to Gemini AI
+    model = genai.GenerativeModel("gemini-1.5-pro-latest")
+    response = model.generate_content(prompt)
 
-# Function to run the agent system
+    return response.text
+
+# ✅ Main workflow
 def agent_workflow(ticker):
-    # Step 1: Fetch Stock Data
     print(f"📊 Fetching stock data for {ticker}...")
     stock_data = fetch_stock_data(ticker)
     
-    # Step 2: Visualize Stock Data
+    # Step 1: Visualize stock trends
     visualize_stock_data(stock_data, ticker)
 
-    # Step 3: Generate Report
-    print(f"📈 Generating analysis report for {ticker}...")
-    user_agent.initiate_chat(
-        report_agent,
-        message=f"Analyze the stock trends for {ticker} and provide insights.",
-    )
+    # Step 2: Get AI-generated analysis
+    print(f"📈 Generating AI analysis report for {ticker}...")
+    report = generate_stock_analysis(ticker)
 
-# Example: Run for Apple Stock (AAPL)
+    # Step 3: Display report
+    print("\n📋 **Stock Analysis Report:**")
+    print(report)
+
+# ✅ Run the AI stock analysis for Apple (AAPL)
 if __name__ == "__main__":
     agent_workflow("AAPL")
